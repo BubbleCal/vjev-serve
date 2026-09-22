@@ -62,6 +62,15 @@ button.x{padding:.15rem .45rem;font-size:.8rem;color:var(--muted);background:tra
    margin-bottom:.7rem;background:var(--block)}
 .q .type{color:var(--accent);font-weight:600}
 .qhead{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem}
+.fold{flex:0 0 auto;width:1.5rem;padding:0;text-align:center;color:var(--muted);background:transparent;border:0;font-size:.8rem;cursor:pointer}
+.fold:hover{color:var(--ink)}
+.q.folded .instr,.q.folded .opts,.q.folded .warn{display:none} .q.folded .qhead{margin-bottom:0}
+.q .brief{display:none;flex:1;min-width:0;color:var(--ink-2);font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.q.folded .brief{display:block} .q.folded .qhead .grow{display:none}
+.ans .name{display:flex;align-items:center;gap:.5rem} .ans .name .fold{margin-left:auto}
+.ans.folded > :not(.name){display:none} .ans.folded .name .brief{display:inline;font-family:inherit;font-weight:400;color:var(--muted);font-size:.85rem;margin-left:.25rem}
+.ans .name .brief{display:none}
+.hgroup{display:flex;align-items:baseline;gap:.75rem} .hgroup .x{font-size:.78rem;margin-left:auto}
 .qhead input{flex:0 0 8rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85rem}
 .qhead select{flex:0 0 7rem}
 select.preset{width:auto;font-size:.82rem;color:var(--ink-2);padding:.2rem .4rem}
@@ -125,7 +134,9 @@ pre{background:var(--well);border:1px solid var(--line);border-radius:8px;paddin
   </div>
 
   <div class=card>
-    <h2>questions</h2>
+    <div class=hgroup><h2>questions</h2>
+      <button class=x onclick="foldAll('#qs .q', true)" title="collapse every question">collapse all</button>
+      <button class=x onclick="foldAll('#qs .q', false)">expand all</button></div>
     <p class=hint>Questions never see each other. <b>noul</b> is this true? · <b>choice</b> pick one ·
       <b>score</b> one ordered scale · <b>multilabel</b> each label on its own</p>
     <div id=qs></div>
@@ -232,14 +243,18 @@ function addQ(type, q = {}, after = null, focus = false){
   const name = el("input", {className: "name", title: "the key this answer comes back under",
                             value: uniqueName(q.name || {noul: "is", choice: "which", score: "how", multilabel: "tags"}[type])});
   const sel = el("select", {className: "type"}, ...["noul", "choice", "score", "multilabel"].map(t => el("option", {textContent: t, selected: t === type})));
+  const fold = el("button", {className: "fold", title: "collapse / expand (double-click the header does too)", onclick: () => setFold(node, !node.classList.contains("folded"))});
+  const brief = el("span", {className: "brief"});
   const tools = el("span", {className: "tools"},
     el("button", {textContent: "↑", title: "move up", onclick: () => move(node, -1)}),
     el("button", {textContent: "↓", title: "move down", onclick: () => move(node, 1)}),
     el("button", {textContent: "⧉", title: "duplicate", onclick: () => addQ(readQ(node).type, readQ(node), node, true)}),
     el("button", {textContent: "✕", title: "remove", onclick: () => { node.remove(); changed(); }}));
   const instr = el("input", {className: "instr", value: q.instructions || ""});
-  node.append(el("div", {className: "qhead"}, name, sel, el("span", {className: "grow"}), tools), instr,
-              el("div", {className: "opts"}), el("div", {className: "warn"}));
+  const head = el("div", {className: "qhead"}, fold, name, sel, brief, el("span", {className: "grow"}), tools);
+  head.ondblclick = e => { if (e.target === head || e.target === brief) setFold(node, !node.classList.contains("folded")); };
+  node.append(head, instr, el("div", {className: "opts"}), el("div", {className: "warn"}));
+  setFold(node, !!q.folded);
   after ? after.after(node) : $("#qs").appendChild(node);
   sel.onchange = () => { const cur = readQ(node); drawOpts(node, sel.value, cur); changed(); };
   drawOpts(node, type, q);
@@ -247,6 +262,18 @@ function addQ(type, q = {}, after = null, focus = false){
   changed();
   return node;
 }
+
+function setFold(node, folded){
+  node.classList.toggle("folded", folded);
+  const b = node.querySelector(".fold"); if (b) b.textContent = folded ? "▸" : "▾";
+  if (node.classList.contains("q")) {
+    const q = readQ(node), n = q.type === "score" ? q.criteria.length : Object.keys(q.criteria || {}).length;
+    node.querySelector(".brief").textContent = (q.instructions || "(no text yet)") +
+      (n ? ` · ${n} ${q.type === "score" ? "levels" : q.type === "multilabel" ? "labels" : "options"}` : q.preset ? ` · ${q.preset}` : "");
+    changed();
+  }
+}
+function foldAll(sel, folded){ document.querySelectorAll(sel).forEach(n => setFold(n, folded)); }
 
 function move(node, dir){
   const sib = dir < 0 ? node.previousElementSibling : node.nextElementSibling;
@@ -296,7 +323,8 @@ function drawOpts(node, type, q = {}){
     return;
   }
   // choice and multilabel share their option rows, so switching between them keeps what was typed
-  const rows = Array.isArray(q.criteria) ? [] : Object.entries(q.criteria || {});
+  // a list of labels (what the API accepts for multilabel) becomes one row per label
+  const rows = Array.isArray(q.criteria) ? q.criteria.map(k => [String(k), ""]) : Object.entries(q.criteria || {});
   for (const [k, v] of rows.length ? rows : [["", ""], ["", ""]]) box.append(optRow(k, v === k ? "" : v));
   const preset = el("select", {className: "preset", title: "used only when every option above is empty", innerHTML: presetOptions()});
   preset.value = typeof q.preset === "string" ? q.preset : "";
@@ -313,7 +341,8 @@ function drawOpts(node, type, q = {}){
 
 function readQ(node){
   const type = node.querySelector(".type").value;
-  const q = {name: node.querySelector(".name").value.trim(), type, instructions: node.querySelector(".instr").value.trim()};
+  const q = {name: node.querySelector(".name").value.trim(), type, instructions: node.querySelector(".instr").value.trim(),
+             folded: node.classList.contains("folded")};
   const levels = (node.querySelector(".levels")?.value || "").split(",").map(t => t.trim()).filter(Boolean);
   if (type === "score") q.criteria = levels;
   if (type === "choice" || type === "multilabel") {
@@ -384,6 +413,10 @@ function changed(){
   }, 250);
 }
 addEventListener("input", e => { if (e.target.closest("#qs, #state")) changed(); });
+addEventListener("keydown", e => {              // Cmd/Ctrl+Shift+[ collapses all questions, ] expands
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === "[" || e.key === "]" || e.key === "{" || e.key === "}"))
+    { e.preventDefault(); foldAll("#qs .q", e.key === "[" || e.key === "{"); }
+});
 function clearAll(){ $("#qs").replaceChildren(); $("#state").value = ""; $("#res").replaceChildren(); changed(); }
 function restore(){
   try {
@@ -415,6 +448,12 @@ async function run(){
   } finally { clearInterval(tick); $("#run").disabled = false; $("#res").classList.remove("stale"); }
 }
 let LAST = null, DUMP = "";
+const FOLDED_ANS = new Set();                 // answer cards collapsed by name: a re-run keeps them collapsed
+function toggleAns(node, folded = !node.classList.contains("folded")){
+  node.classList.toggle("folded", folded);
+  node.querySelector(".fold").textContent = folded ? "▸" : "▾";
+  folded ? FOLDED_ANS.add(node.dataset.name) : FOLDED_ANS.delete(node.dataset.name);
+}
 addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !$("#run").disabled) run(); });
 const say = t => $("#status").textContent = t;
 
@@ -462,7 +501,10 @@ function render(j, body, ms){
     const how = !r ? "" : `<div class=meta>options from preset <b>@${esc(r.preset)}</b>` +
       (r.pinned ? " (pinned)" : ` · router ${Object.entries(r.router).map(([k, v]) => `${esc(k)} ${v.toFixed(2)}`).join(", ")}`) +
       (r.multiple_p == null ? "" : ` · several answers? ${r.multiple_p.toFixed(2)} → ${r.multiple ? "yes" : "no"}`) + `</div>`;
-    out.push(`<div class=ans data-type=${a.type}><div class=name>${esc(name)}<span class=tag>${a.type}</span></div>
+    const verdict = a.type === "noul" ? `P(true) ${a.noul.toFixed(2)}` : a.type === "choice" ? `→ ${esc(a.choice)}`
+      : a.type === "score" ? `expected ${a.score}` : a.type === "multilabel" ? `→ ${esc(a.labels.join(", ") || "none")}` : "";
+    out.push(`<div class="ans ${FOLDED_ANS.has(name) ? "folded" : ""}" data-type=${a.type} data-name="${esc(name)}"><div class=name>${esc(name)}<span class=tag>${a.type}</span><span class=brief>${verdict}</span>
+      <button class=fold title="collapse / expand" onclick="toggleAns(this.closest('.ans'))">${FOLDED_ANS.has(name) ? "▸" : "▾"}</button></div>
       <div class=ask>${esc(q.instructions)}</div>${inner}${how}</div>`);
   }
   const u = j.usage || {};
@@ -471,7 +513,9 @@ function render(j, body, ms){
     ${(u.images || []).map(i => i.received.join("×") === i.used.join("×") ? `image ${i.used.join("×")}`
         : `image ${i.received.join("×")} → ${i.used.join("×")}`).map(t => t + " · ").join("")}
     server ${j.latency_ms} ms · round trip ${Math.round(ms)} ms</div>`);
-  $("#res").innerHTML = "<h2>answers</h2>" + out.join("");
+  $("#res").innerHTML = `<div class=hgroup><h2>answers</h2>
+      <button class=x onclick="document.querySelectorAll('#res .ans').forEach(n => toggleAns(n, true))">collapse all</button>
+      <button class=x onclick="document.querySelectorAll('#res .ans').forEach(n => toggleAns(n, false))">expand all</button></div>` + out.join("");
 }
 
 function dump(kind, text, keep){
