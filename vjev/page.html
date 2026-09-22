@@ -66,7 +66,8 @@ button.x{padding:.15rem .45rem;font-size:.8rem;color:var(--muted);background:tra
 .fold:hover{color:var(--ink)}
 .q.folded .instr,.q.folded .opts,.q.folded .warn{display:none} .q.folded .qhead{margin-bottom:0}
 .q .brief{display:none;flex:1;min-width:0;color:var(--ink-2);font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.q.folded .brief{display:block} .q.folded .qhead .grow{display:none}
+.q.folded .brief{display:block} .q.folded .qhead .grow,.q.folded .qhead .name,.q.folded .qhead .type{display:none}
+.q .brief b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;color:var(--ink)} .q .brief i{font-style:normal;color:var(--accent);margin:0 .4rem}
 .ans .name{display:flex;align-items:center;gap:.5rem} .ans .name .fold{margin-left:auto}
 .ans.folded > :not(.name){display:none} .ans.folded .name .brief{display:inline;font-family:inherit;font-weight:400;color:var(--muted);font-size:.85rem;margin-left:.25rem}
 .ans .name .brief{display:none}
@@ -254,10 +255,10 @@ function addQ(type, q = {}, after = null, focus = false){
   const head = el("div", {className: "qhead"}, fold, name, sel, brief, el("span", {className: "grow"}), tools);
   head.ondblclick = e => { if (e.target === head || e.target === brief) setFold(node, !node.classList.contains("folded")); };
   node.append(head, instr, el("div", {className: "opts"}), el("div", {className: "warn"}));
-  setFold(node, !!q.folded);
   after ? after.after(node) : $("#qs").appendChild(node);
   sel.onchange = () => { const cur = readQ(node); drawOpts(node, sel.value, cur); changed(); };
   drawOpts(node, type, q);
+  setFold(node, !!q.folded);                    // after the options exist: the brief counts them
   if (focus) { node.classList.add("flash"); node.scrollIntoView({block: "nearest", behavior: "smooth"}); instr.focus(); }
   changed();
   return node;
@@ -268,8 +269,9 @@ function setFold(node, folded){
   const b = node.querySelector(".fold"); if (b) b.textContent = folded ? "▸" : "▾";
   if (node.classList.contains("q")) {
     const q = readQ(node), n = q.type === "score" ? q.criteria.length : Object.keys(q.criteria || {}).length;
-    node.querySelector(".brief").textContent = (q.instructions || "(no text yet)") +
-      (n ? ` · ${n} ${q.type === "score" ? "levels" : q.type === "multilabel" ? "labels" : "options"}` : q.preset ? ` · ${q.preset}` : "");
+    // the name and type inputs are hidden while folded: the one line carries everything
+    node.querySelector(".brief").innerHTML = `<b>${esc(q.name || "?")}</b><i>${q.type}</i>${esc(q.instructions || "(no text yet)")}` +
+      (n ? ` · ${n} ${q.type === "score" ? "levels" : q.type === "multilabel" ? "labels" : "options"}` : q.preset ? ` · ${esc(q.preset)}` : "");
     changed();
   }
 }
