@@ -7,13 +7,14 @@ scale? — and it returns calibrated probabilities for every option. Nothing is 
 It is a re-creation of the [Jev](https://typesafe.ai) API's shape on an open base
 (Qwen3.5-4B), with images added. This repository is the inference side: the model code, a
 Jev-compatible HTTP API, and a web console. The weights are on the Hub:
-[`yah01/vjev-vision-pilot`](https://huggingface.co/yah01/vjev-vision-pilot).
+[`yah01/vjev-vision`](https://huggingface.co/yah01/vjev-vision) (the earlier 300-step pilot:
+[`yah01/vjev-vision-pilot`](https://huggingface.co/yah01/vjev-vision-pilot)).
 
 ## Run it
 
 ```bash
 pip install git+https://github.com/BubbleCal/vjev-serve
-vjev-serve --model yah01/vjev-vision-pilot           # downloads ~9 GB the first time
+vjev-serve                                           # yah01/vjev-vision; downloads ~9 GB the first time
 ```
 
 Then open <http://localhost:8800>: drop an image, write questions, see the distributions.
@@ -77,7 +78,7 @@ Other routes: `GET /v1/models`, `GET /v1/presets`, `GET /health`.
 from vjev import load
 from vjev.server import ModelEngine   # or drive the pieces yourself, as server.py does
 
-L = load("yah01/vjev-vision-pilot")   # -> model, processor, config, meta, device
+L = load("yah01/vjev-vision")   # -> model, processor, config, meta, device
 ```
 
 `vjev/render.py` turns a question into the sequence the model reads, `vjev/model.py` is the
@@ -95,10 +96,10 @@ cache broadcast to every question, then kept for the next request about the same
 
 ## Limits of the current checkpoint
 
-It is a pilot (300 vision steps). On held-out COCO geometry questions: choice accuracy 0.67,
-ECE 0.09; VQAv2: 0.65 / 0.03. Yes/no presence judgements lean towards "yes" on adversarial
-absent objects (13.8% false positives on POPE-adversarial). Trained on single images.
-Details on the model card.
+`yah01/vjev-vision` is step 600 of the full vision run. On held-out images: COCO geometry
+choice accuracy 0.735, VQAv2 0.706; absent objects called present 6.1% of the time on
+POPE-adversarial (the pilot: 13.8%). Spatial answers are over-confident (ECE 0.18): trust the
+ranking more than the probabilities. Trained on single images. Details on the model card.
 
 ## License
 

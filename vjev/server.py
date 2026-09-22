@@ -1,6 +1,6 @@
 """The vjev inference service: a Jev-shaped API, plus images, and a web console.
 
-  vjev-serve --model yah01/vjev-vision-pilot                 # from the Hub (or a local dir)
+  vjev-serve --model yah01/vjev-vision                       # from the Hub (or a local dir)
   vjev-serve --stub                                          # API + UI, no model, no GPU
 
   /                 web UI: drop an image, write questions, see the distributions
@@ -570,7 +570,7 @@ def make_handler(engine, page: str):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default="yah01/vjev-vision-pilot",
+    ap.add_argument("--model", default="yah01/vjev-vision",
                     help="a Hugging Face model id, or a local directory with the same files")
     ap.add_argument("--device", default=None, help="cuda, mps or cpu (default: the best available)")
     ap.add_argument("--stub", action="store_true", help="serve fake answers, load no model")
