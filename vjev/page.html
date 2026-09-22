@@ -1,0 +1,515 @@
+<!doctype html><html lang=en><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>vjev</title>
+<style>
+/* Series colours are the training dashboard's. The surfaces are not: a dashboard is flat
+   panels, this page nests four levels (page > card > question > field), and each level
+   needs a step the eye can see - plane, surface, block and well are those four, and --line
+   draws every edge. One colour per question type, shared by the editor and its answer. */
+:root{
+  color-scheme:light;
+  --plane:#eceae4; --surface:#ffffff; --block:#f5f4ef; --well:#ffffff;
+  --ink:#0b0b0b; --ink-2:#45443f; --muted:#7b7973;
+  --line:#d3d0c6; --line-2:#b9b6aa; --track:#e2dfd6;
+  --shadow:0 1px 2px rgba(20,18,10,.06),0 4px 14px rgba(20,18,10,.05);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --bad:#c0392b;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme=light]){
+  color-scheme:dark;
+  --plane:#08090a; --surface:#16181b; --block:#22252a; --well:#0c0d0f;
+  --ink:#f4f4f2; --ink-2:#c6c5be; --muted:#8d8c86;
+  --line:#33373d; --line-2:#4a4f57; --track:#3a3e45;
+  --shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 24px rgba(0,0,0,.45);
+  --s1:#4a96f0; --s2:#f0763f; --s3:#25b886; --bad:#e05a4a;
+}}
+[data-type=choice]{--accent:var(--s1)} [data-type=noul],[data-type=multilabel]{--accent:var(--s2)} [data-type=score]{--accent:var(--s3)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);
+     font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:74rem;margin:0 auto;padding:1.75rem 1.25rem 4rem}
+header{display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem}
+h1{font-size:1.2rem;font-weight:600;margin:0}
+.sub{color:var(--muted);font-size:.9rem}
+.badge{font-size:.8rem;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;
+       padding:.15rem .6rem;background:var(--surface)}
+.cols{display:grid;grid-template-columns:minmax(20rem,1fr) minmax(22rem,1.15fr);gap:1.25rem}
+@media(max-width:60rem){.cols{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;
+      box-shadow:var(--shadow)}
+.card h2,.res h2{font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+      color:var(--ink-2);margin:0 0 .15rem}
+.card .hint{color:var(--muted);font-size:.84rem;margin:0 0 .7rem}
+textarea,input,select{width:100%;background:var(--well);color:var(--ink);font:inherit;font-size:.92rem;
+      border:1px solid var(--line-2);border-radius:6px;padding:.45rem .6rem}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--s1);outline-offset:-1px;border-color:var(--s1)}
+::placeholder{color:var(--muted)}
+textarea{min-height:6.5rem;resize:vertical}
+button{background:var(--block);color:var(--ink-2);border:1px solid var(--line-2);border-radius:6px;
+       padding:.4rem .8rem;font:inherit;font-size:.88rem;cursor:pointer}
+button:hover{color:var(--ink);border-color:var(--muted)}
+button.primary{background:var(--s1);border-color:var(--s1);color:#fff;font-weight:600;padding:.5rem 1.2rem}
+button.primary:disabled{opacity:.5;cursor:default}
+button.x{padding:.15rem .45rem;font-size:.8rem;color:var(--muted);background:transparent}
+.drop{background:var(--block);border:1.5px dashed var(--line-2);border-radius:8px;padding:1rem;text-align:center;color:var(--muted);
+      font-size:.88rem;cursor:pointer;margin-top:.7rem}
+.drop.over{border-color:var(--s1);color:var(--s1)}
+.thumbs{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.6rem}
+.thumb{position:relative;width:5.5rem;height:5.5rem;border-radius:6px;overflow:hidden;border:1px solid var(--line-2)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb button{position:absolute;top:2px;right:2px;padding:0 .3rem;line-height:1.3;background:rgba(0,0,0,.55);
+              color:#fff;border:0;border-radius:4px;font-size:.75rem}
+.q{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:.7rem .8rem;
+   margin-bottom:.7rem;background:var(--block)}
+.q .type{color:var(--accent);font-weight:600}
+.qhead{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem}
+.qhead input{flex:0 0 8rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85rem}
+.qhead select{flex:0 0 7rem}
+select.preset{width:auto;font-size:.82rem;color:var(--ink-2);padding:.2rem .4rem}
+.qhead .grow{flex:1}
+.opt{display:flex;gap:.4rem;margin-top:.35rem}
+.opt input:first-child{flex:0 0 9rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85rem}
+.opt input.levels{flex:1;font-family:inherit;font-size:.92rem}                       /* a score's one field is its whole row */
+.row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-top:.8rem}
+.row .grow{flex:1}
+.tools{display:flex;gap:.25rem}
+.tools button{padding:.15rem .5rem;font-size:.85rem;line-height:1.35;color:var(--muted);background:transparent}
+.tools button:hover{color:var(--ink)}
+.tools button:disabled{opacity:.3;cursor:default}
+.q.flash{animation:flash .9s ease-out}
+@keyframes flash{from{box-shadow:0 0 0 2px var(--accent)}to{box-shadow:0 0 0 2px transparent}}
+.q .warn{color:var(--bad);font-size:.8rem;margin-top:.35rem}
+.q .name.dup{border-color:var(--bad)}
+.thumb .n{position:absolute;left:2px;top:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:4px;font-size:.72rem;padding:0 .3rem;line-height:1.35}
+.res.stale{opacity:.45;transition:opacity .2s}
+.res{margin-top:1.25rem}
+.res h2{margin:0 0 .6rem}
+.ans{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;
+     padding:.85rem 1rem;margin-bottom:.7rem;box-shadow:var(--shadow)}
+.ans .name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9rem;font-weight:600}
+.tag{font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);
+     border:1px solid var(--accent);border-radius:4px;padding:0 .35rem;margin-left:.5rem}
+.ans .ask{color:var(--ink-2);font-size:.9rem;margin:.15rem 0 .6rem}
+.bar{display:grid;grid-template-columns:minmax(6rem,11rem) 1fr 3.2rem;gap:.6rem;align-items:center;
+     margin:.22rem 0;font-size:.88rem}
+.bar .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .track{background:var(--track);border-radius:3px;height:.6rem;overflow:hidden}
+/* display:block - .fill is an <i>, and an inline box ignores width and height: every bar
+   rendered empty until this was set */
+.bar .fill{display:block;height:100%;background:var(--accent);opacity:.45;border-radius:3px}
+.bar.top .fill{opacity:1}
+.bar.top .t,.bar.top .v{color:var(--ink);font-weight:600}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.meta{color:var(--muted);font-size:.82rem;margin-top:.5rem;font-variant-numeric:tabular-nums}
+pre{background:var(--well);border:1px solid var(--line);border-radius:8px;padding:.9rem;overflow:auto;
+    font-size:12.5px;line-height:1.5;color:var(--ink-2);margin:.7rem 0 0;max-height:22rem}
+.err{border-color:var(--bad);color:var(--bad)}
+.gauge{height:.7rem;background:var(--track);border-radius:4px;overflow:hidden;margin:.3rem 0}
+.gauge i{display:block;height:100%;background:var(--accent)}
+</style></head><body><div class=wrap>
+
+<header>
+  <h1>vjev</h1>
+  <span class=sub>typed decisions from text and images</span>
+  <span class=badge id=model>connecting…</span>
+  <span class=badge id=vision></span>
+</header>
+
+<div class=cols>
+  <div class=card>
+    <h2>state</h2>
+    <p class=hint>What the decision is about. Text, images, or both.</p>
+    <textarea id=state placeholder="Ticket: 'Since the rollout my dashboard has been off…'"></textarea>
+    <div class=drop id=drop>drop images here, or click to choose</div>
+    <input type=file id=file accept="image/*" multiple hidden>
+    <div class=thumbs id=thumbs></div>
+  </div>
+
+  <div class=card>
+    <h2>questions</h2>
+    <p class=hint>Questions never see each other. <b>noul</b> is this true? · <b>choice</b> pick one ·
+      <b>score</b> one ordered scale · <b>multilabel</b> each label on its own</p>
+    <div id=qs></div>
+    <div class=row>
+      <button onclick="addQ('noul', {}, null, true)">+ noul</button>
+      <button onclick="addQ('choice', {}, null, true)">+ choice</button>
+      <button onclick="addQ('score', {}, null, true)">+ score</button>
+      <button onclick="addQ('multilabel', {}, null, true)">+ multilabel</button>
+      <span class=grow></span>
+      <button class=x onclick="preset()" title="replace everything with an example">example</button>
+      <button class=x onclick="clearAll()" title="remove every question and the state">clear</button>
+    </div>
+  </div>
+</div>
+
+<div class=row>
+  <button class=primary id=run onclick=run() title="⌘ / Ctrl + Enter">run</button>
+  <button onclick=showReq()>show request</button>
+  <button onclick=showResp() id=respbtn hidden>show response</button>
+  <button onclick=copyCurl()>copy as curl</button>
+  <span class=sub id=status></span>
+</div>
+
+<div class=res id=res></div>
+<pre id=dump hidden></pre>
+
+<script>
+const $ = s => document.querySelector(s);
+let IMAGES = [];            // {name, media_type, data(base64), url}
+let VISION = true;
+let QID = 0;
+let PRESET_NAMES = [];
+const presetOptions = () => `<option value="">no options → detect a preset</option>` +
+  PRESET_NAMES.map(n => `<option value="@${n}">@${n}</option>`).join("");
+fetch("v1/presets").then(r => r.json()).then(j => {
+  PRESET_NAMES = Object.keys(j.presets);
+  document.querySelectorAll("#qs select.preset").forEach(sel => sel.innerHTML = presetOptions());
+}).catch(() => {});
+
+fetch("v1/models").then(r => r.json()).then(m => {
+  const info = m.models[0];
+  $("#model").textContent = info.id;
+  VISION = !!info.vision;
+  $("#vision").textContent = VISION ? "images: on" : "images: text-only checkpoint";
+  if (!VISION) $("#vision").style.color = "var(--muted)";
+}).catch(() => $("#model").textContent = "server unreachable");
+
+// ---- images ----------------------------------------------------------------
+const drop = $("#drop");
+drop.onclick = () => $("#file").click();
+$("#file").onchange = e => addFiles(e.target.files);
+["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => {
+  e.preventDefault(); drop.classList.add("over");
+}));
+["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => {
+  e.preventDefault(); drop.classList.remove("over");
+}));
+drop.addEventListener("drop", e => addFiles(e.dataTransfer.files));
+addEventListener("paste", e => addFiles([...e.clipboardData.files]));
+
+function addFiles(files){
+  for (const f of files) {
+    if (!f.type.startsWith("image/")) continue;
+    const r = new FileReader();
+    r.onload = () => {
+      const url = r.result;
+      IMAGES.push({name: f.name, media_type: f.type, data: url.split(",")[1], url});
+      drawThumbs();
+    };
+    r.readAsDataURL(f);
+  }
+}
+function drawThumbs(){
+  // numbered when there are several: the model sees them as "Picture 1:", "Picture 2:", ...
+  $("#thumbs").innerHTML = IMAGES.map((im, i) =>
+    `<div class=thumb draggable=true data-i=${i}><img src="${im.url}" alt="">
+       ${IMAGES.length > 1 ? `<span class=n>${i + 1}</span>` : ""}
+       <button class=x onclick="IMAGES.splice(${i},1);drawThumbs()" title="remove">✕</button></div>`).join("");
+  for (const t of document.querySelectorAll("#thumbs .thumb")) {     // drag a thumbnail to reorder
+    t.ondragstart = e => e.dataTransfer.setData("text/x-thumb", t.dataset.i);
+    t.ondragover = e => e.preventDefault();
+    t.ondrop = e => { e.preventDefault(); e.stopPropagation();
+      const from = +e.dataTransfer.getData("text/x-thumb"), to = +t.dataset.i;
+      if (Number.isInteger(from) && from !== to) { IMAGES.splice(to, 0, IMAGES.splice(from, 1)[0]); drawThumbs(); } };
+  }
+}
+
+// ---- questions --------------------------------------------------------------
+// The editors ARE the state: readQ() turns one back into data, and everything else -
+// duplicating, changing type, saving, building the request - goes through it.
+const DEFAULT_LEVELS = ["negligible", "minor", "serious", "critical"];
+const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
+
+function uniqueName(base, except){
+  const taken = new Set([...document.querySelectorAll("#qs .q")].filter(q => q !== except).map(q => q.querySelector(".name").value.trim()));
+  if (!taken.has(base)) return base;
+  const stem = base.replace(/_?\d+$/, "") || "q";
+  for (let n = 2; ; n++) if (!taken.has(`${stem}_${n}`)) return `${stem}_${n}`;
+}
+
+function addQ(type, q = {}, after = null, focus = false){
+  const id = ++QID;
+  const node = el("div", {className: "q"});
+  const name = el("input", {className: "name", title: "the key this answer comes back under",
+                            value: uniqueName(q.name || {noul: "is", choice: "which", score: "how", multilabel: "tags"}[type])});
+  const sel = el("select", {className: "type"}, ...["noul", "choice", "score", "multilabel"].map(t => el("option", {textContent: t, selected: t === type})));
+  const tools = el("span", {className: "tools"},
+    el("button", {textContent: "↑", title: "move up", onclick: () => move(node, -1)}),
+    el("button", {textContent: "↓", title: "move down", onclick: () => move(node, 1)}),
+    el("button", {textContent: "⧉", title: "duplicate", onclick: () => addQ(readQ(node).type, readQ(node), node, true)}),
+    el("button", {textContent: "✕", title: "remove", onclick: () => { node.remove(); changed(); }}));
+  const instr = el("input", {className: "instr", value: q.instructions || ""});
+  node.append(el("div", {className: "qhead"}, name, sel, el("span", {className: "grow"}), tools), instr,
+              el("div", {className: "opts"}), el("div", {className: "warn"}));
+  after ? after.after(node) : $("#qs").appendChild(node);
+  sel.onchange = () => { const cur = readQ(node); drawOpts(node, sel.value, cur); changed(); };
+  drawOpts(node, type, q);
+  if (focus) { node.classList.add("flash"); node.scrollIntoView({block: "nearest", behavior: "smooth"}); instr.focus(); }
+  changed();
+  return node;
+}
+
+function move(node, dir){
+  const sib = dir < 0 ? node.previousElementSibling : node.nextElementSibling;
+  if (!sib) return;
+  dir < 0 ? sib.before(node) : sib.after(node);
+  changed();
+}
+
+function optRow(k = "", v = ""){
+  const row = el("div", {className: "opt"});
+  const key = el("input", {placeholder: "id", value: k}), text = el("input", {placeholder: "what it means (optional)", value: v});
+  // paste "red, green, blue" or several lines into an id: one row each
+  key.addEventListener("paste", e => {
+    const parts = e.clipboardData.getData("text").split(/[\n,;]+/).map(t => t.trim()).filter(Boolean);
+    if (parts.length < 2) return;
+    e.preventDefault();
+    key.value = parts[0];
+    let last = row;
+    for (const part of parts.slice(1)) { const r = optRow(part); last.after(r); last = r; }
+    changed();
+  });
+  for (const input of [key, text]) input.addEventListener("keydown", e => {
+    if (e.key !== "Enter" || e.metaKey || e.ctrlKey) return;
+    e.preventDefault();                                   // Enter: a new row under this one
+    const r = optRow(); row.after(r); r.querySelector("input").focus(); changed();
+  });
+  row.append(key, text, el("button", {className: "x", textContent: "✕", title: "remove this option",
+                                      onclick: () => { row.remove(); changed(); }}));
+  return row;
+}
+
+function drawOpts(node, type, q = {}){
+  node.dataset.type = type;                                  // drives the accent colour
+  node.querySelector(".instr").placeholder = type === "noul"
+    ? "a statement to judge, e.g. There is a person in this image."
+    : type === "multilabel" ? "what the labels are about, e.g. Which of these describe the cat?"
+    : "a question, e.g. Which team should own this?";
+  const box = node.querySelector(".opts");
+  box.replaceChildren();
+  if (type === "noul") return;
+  const hint = html => el("p", {className: "hint", style: "margin:.4rem 0 0", innerHTML: html});
+  if (type === "score") {
+    const lv = q.levels?.length ? q.levels : Array.isArray(q.criteria) && q.criteria.length ? q.criteria : DEFAULT_LEVELS;
+    box.append(el("div", {className: "opt"}, el("input", {className: "levels", placeholder: "ordered levels of ONE scale, low → high", value: lv.join(", ")})),
+      hint(`The levels of one scale, lowest first: they compete, and their probabilities sum to 1. To rate
+            several independent things (cute, fluffy, asleep…) use a <b>multilabel</b> question instead.`));
+    return;
+  }
+  // choice and multilabel share their option rows, so switching between them keeps what was typed
+  const rows = Array.isArray(q.criteria) ? [] : Object.entries(q.criteria || {});
+  for (const [k, v] of rows.length ? rows : [["", ""], ["", ""]]) box.append(optRow(k, v === k ? "" : v));
+  const preset = el("select", {className: "preset", title: "used only when every option above is empty", innerHTML: presetOptions()});
+  preset.value = typeof q.preset === "string" ? q.preset : "";
+  box.append(el("div", {className: "row"},
+    el("button", {className: "x", textContent: "+ option", onclick: () => { const r = optRow(); box.querySelector(".row").before(r); r.querySelector("input").focus(); changed(); }}),
+    preset));
+  if (type === "multilabel") box.append(
+    el("div", {className: "opt"}, el("input", {className: "levels", value: (q.levels || []).join(", "),
+        placeholder: "optional scale, low → high — empty: each label gets a 0–1"})),
+    hint(`Each label is scored on its own; nothing here competes. A description written as a sentence
+          ("The cat is asleep.") is judged as written.`));
+  else box.append(hint(`Leave every option empty and the question is matched to a preset option set.`));
+}
+
+function readQ(node){
+  const type = node.querySelector(".type").value;
+  const q = {name: node.querySelector(".name").value.trim(), type, instructions: node.querySelector(".instr").value.trim()};
+  const levels = (node.querySelector(".levels")?.value || "").split(",").map(t => t.trim()).filter(Boolean);
+  if (type === "score") q.criteria = levels;
+  if (type === "choice" || type === "multilabel") {
+    q.criteria = {};
+    for (const row of node.querySelectorAll(".opt")) {
+      const inputs = row.querySelectorAll("input");
+      if (inputs.length < 2) continue;                        // the levels field
+      const k = inputs[0].value.trim();
+      if (k) q.criteria[k] = inputs[1].value.trim() || k;
+    }
+    q.preset = node.querySelector(".preset")?.value || "";
+    if (type === "multilabel") q.levels = levels;
+  }
+  return q;
+}
+
+// what is wrong with a question, in words - shown under it, and it is left out of the request
+function problem(q, names){
+  if (!q.instructions) return "no text yet — left out of the request";
+  if (names.filter(n => n === q.name).length > 1) return `two questions are named "${q.name}" — the answer keys must differ`;
+  if (!q.name) return "needs a name: the key its answer comes back under";
+  if (q.type === "score" && q.criteria.length < 2) return "a scale needs at least two levels";
+  if (q.type === "choice" && Object.keys(q.criteria).length === 1) return "one option is not a choice — add another, or empty it to use a preset";
+  if (q.type === "multilabel" && !Object.keys(q.criteria).length && !q.preset) return "add labels, or pick a preset";
+  if (q.type === "multilabel" && q.levels.length === 1) return "a scale needs at least two levels (or leave it empty)";
+  return "";
+}
+
+function collect(){
+  const nodes = [...document.querySelectorAll("#qs .q")];        // #qs: answers are not editors
+  const all = nodes.map(readQ), names = all.map(q => q.name);
+  const questions = {};
+  nodes.forEach((node, i) => {
+    const q = all[i], why = problem(q, names);
+    node.querySelector(".warn").textContent = why;
+    node.querySelector(".name").classList.toggle("dup", why.includes("are named"));
+    if (why) return;
+    const out = {type: q.type, instructions: q.instructions};
+    if (q.type === "score") out.criteria = q.criteria;
+    if (q.type === "choice" || q.type === "multilabel") {
+      // no options typed: the pinned preset, or nothing at all and the server routes the question
+      if (Object.keys(q.criteria).length) out.criteria = q.criteria;
+      else if (q.preset) out.criteria = q.preset;
+      if (q.type === "multilabel" && q.levels.length >= 2) out.levels = q.levels;
+    }
+    questions[q.name] = out;
+  });
+  const text = $("#state").value;
+  const state = IMAGES.length
+    ? [...(text ? [{type: "text", text}] : []),
+       ...IMAGES.map(im => ({type: "image", source: {type: "base64",
+                                                     media_type: im.media_type, data: im.data}}))]
+    : text;
+  return {model: "vjev-latest", state, questions};
+}
+
+// ---- remembering the form ---------------------------------------------------
+// The page is served no-store and reloaded often; without this every reload lost the
+// questions. Images are not kept: a few photos would overflow localStorage.
+const STORE = "vjev.form.v1";
+let saveTimer;
+function changed(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    collect();                                              // refreshes the warnings too
+    try { localStorage.setItem(STORE, JSON.stringify({state: $("#state").value,
+            questions: [...document.querySelectorAll("#qs .q")].map(readQ)})); } catch {}
+  }, 250);
+}
+addEventListener("input", e => { if (e.target.closest("#qs, #state")) changed(); });
+function clearAll(){ $("#qs").replaceChildren(); $("#state").value = ""; $("#res").replaceChildren(); changed(); }
+function restore(){
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE) || "null");
+    if (!saved?.questions?.length) return false;
+    $("#state").value = saved.state || "";
+    for (const q of saved.questions) addQ(q.type, q);
+    return true;
+  } catch { return false; }
+}
+
+// ---- run --------------------------------------------------------------------
+async function run(){
+  const body = collect();
+  if (!Object.keys(body.questions).length) return say("add a question first");
+  $("#run").disabled = true; $("#res").classList.add("stale");
+  const t0 = performance.now();
+  const tick = setInterval(() => say(`scoring… ${((performance.now() - t0) / 1000).toFixed(1)} s`), 100);
+  try {
+    const r = await fetch("v1/systemone", {method: "POST",
+      headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
+    const j = await r.json();
+    LAST = j; $("#respbtn").hidden = false;
+    if (!$("#dump").hidden && DUMP === "response") showResp(true);
+    if (!r.ok) { showError(r.status, j); return; }
+    render(j, body, performance.now() - t0);
+  } catch (e) {
+    showError(0, {detail: {error_type: "network", message: String(e)}});
+  } finally { clearInterval(tick); $("#run").disabled = false; $("#res").classList.remove("stale"); }
+}
+let LAST = null, DUMP = "";
+addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !$("#run").disabled) run(); });
+const say = t => $("#status").textContent = t;
+
+function showError(status, j){
+  say("");
+  $("#res").innerHTML = `<div class="ans err"><b>HTTP ${status || "—"}</b><pre>${
+    esc(JSON.stringify(j.detail ?? j, null, 1))}</pre></div>`;
+}
+const esc = s => s.replace(/[<>&]/g, c => ({"<": "&lt;", ">": "&gt;", "&": "&amp;"}[c]));
+
+function bars(entries, fmt = v => v.toFixed(3)){
+  const top = Math.max(...entries.map(e => e[1]));
+  return entries.map(([k, v]) =>
+    `<div class="bar ${v === top ? "top" : ""}"><span class=t title="${esc(k)}">${esc(k)}</span>
+       <span class=track><i class=fill style="width:${(v * 100).toFixed(1)}%"></i></span>
+       <span class=v>${fmt(v)}</span></div>`).join("");
+}
+
+function render(j, body, ms){
+  say("");
+  const out = [];
+  for (const [name, a] of Object.entries(j.answers)) {
+    const q = body.questions[name];
+    let inner;
+    if (a.type === "noul") {
+      inner = `<div class=gauge><i style="width:${(a.noul * 100).toFixed(1)}%"></i></div>
+               <div class=bar><span class=t>P(true)</span><span></span><span class=v>${a.noul.toFixed(3)}</span></div>`;
+    } else if (a.type === "multilabel") {
+      const e = Object.entries(a.probabilities || a.scores).sort((x, y) => y[1] - x[1]);
+      inner = e.map(([k, v]) =>
+        `<div class="bar ${v >= .5 ? "top" : ""}"><span class=t title="${esc(k)}">${esc(k)}</span>
+           <span class=track><i class=fill style="width:${(v * 100).toFixed(1)}%"></i></span>
+           <span class=v>${v.toFixed(3)}</span></div>`).join("") +
+        `<div class=meta>each label scored on its own${a.scores ? ` · expected level on "${esc(Object.values(a.legend).join(" → "))}", scaled to 0–1` : ""} · ≥ 0.5: <b>${esc(a.labels.join(", ") || "none")}</b></div>`;
+    } else if (a.type === "choice") {
+      const e = Object.entries(a.probabilities).sort((x, y) => y[1] - x[1]);
+      inner = bars(e) + `<div class=meta>choice <b>${esc(a.choice)}</b> · confidence ${a.confidence}</div>`;
+    } else if (a.type !== "score") {        // an answer type this page predates: show it, don't crash
+      inner = `<pre>${esc(JSON.stringify(a, null, 1))}</pre>`;
+    } else {
+      const e = Object.entries(a.probabilities).map(([i, v]) => [a.legend[i], v]);
+      inner = bars(e) + `<div class=meta>expected level ${a.score} of 0–${e.length - 1} · confidence ${a.confidence} · levels of one scale, summing to 1</div>`;
+    }
+    const r = a.resolved;
+    const how = !r ? "" : `<div class=meta>options from preset <b>@${esc(r.preset)}</b>` +
+      (r.pinned ? " (pinned)" : ` · router ${Object.entries(r.router).map(([k, v]) => `${esc(k)} ${v.toFixed(2)}`).join(", ")}`) +
+      (r.multiple_p == null ? "" : ` · several answers? ${r.multiple_p.toFixed(2)} → ${r.multiple ? "yes" : "no"}`) + `</div>`;
+    out.push(`<div class=ans data-type=${a.type}><div class=name>${esc(name)}<span class=tag>${a.type}</span></div>
+      <div class=ask>${esc(q.instructions)}</div>${inner}${how}</div>`);
+  }
+  const u = j.usage || {};
+  out.push(`<div class=meta>${j.model} · ${Object.keys(j.answers).length} answers ·
+    ${u.input_tokens} input tokens (${u.tokens_processed || 0} processed) ·
+    ${(u.images || []).map(i => i.received.join("×") === i.used.join("×") ? `image ${i.used.join("×")}`
+        : `image ${i.received.join("×")} → ${i.used.join("×")}`).map(t => t + " · ").join("")}
+    server ${j.latency_ms} ms · round trip ${Math.round(ms)} ms</div>`);
+  $("#res").innerHTML = "<h2>answers</h2>" + out.join("");
+}
+
+function dump(kind, text, keep){
+  const d = $("#dump");
+  d.hidden = !keep && !d.hidden && DUMP === kind;             // the same button twice closes it
+  DUMP = kind; d.textContent = text;
+  if (!d.hidden && !keep) d.scrollIntoView({block: "nearest", behavior: "smooth"});
+}
+const showReq = () => dump("request", JSON.stringify(collect(), (k, v) => k === "data" ? `<${v.length} base64 chars>` : v, 1));
+const showResp = keep => dump("response", JSON.stringify(LAST, null, 1), keep);
+function copyCurl(){
+  // relative to this page, not to the origin: behind a reverse proxy the API lives under a path
+  const url = new URL("v1/systemone", location.href).href;
+  const body = JSON.stringify(collect());
+  navigator.clipboard.writeText(`curl -s ${url} -H 'content-type: application/json' -d '${body.replace(/'/g, "'\\''")}'`);
+  say("curl copied — add -u user:password if this page asked you to log in");
+}
+
+function preset(){
+  $("#qs").replaceChildren();
+  if (IMAGES.length) {
+    addQ("choice", {name: "where", instructions: "Which side of the image is the main subject on?",
+                    criteria: {left: "the left half", right: "the right half",
+                               centre: "roughly in the middle"}});
+    addQ("noul", {name: "person", instructions: "There is a person in this image."});
+    addQ("score", {name: "busy", instructions: "How cluttered is the scene?",
+                   criteria: ["empty", "sparse", "busy", "crowded"]});
+  } else {
+    $("#state").value = "Ticket: 'I upgraded to Pro yesterday and was charged $49, but my account "
+      + "still shows the Free tier and I cannot export. I already logged out and back in.'";
+    addQ("choice", {name: "route", instructions: "Which team should own this ticket?",
+                    criteria: {billing: "Payments, invoices and charges.",
+                               provisioning: "Plan entitlements and activation.",
+                               bug: "Product defects."}});
+    addQ("noul", {name: "urgent", instructions: "This needs attention within 24 hours."});
+    addQ("score", {name: "severity", instructions: "How severe is this for the customer?",
+                   criteria: ["negligible", "minor", "moderate", "serious", "critical"]});
+  }
+}
+restore() || preset();
+</script></div></body></html>

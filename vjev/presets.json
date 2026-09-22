@@ -1,0 +1,43 @@
+{
+  "_doc": "Option sets a question can be resolved to when it arrives without criteria (serve/jev_server.py, resolve_presets). 'about' is the option text the router reads, so it describes the QUESTION, not the labels. 'multiple' is the default when the router's own single/multiple reading is close to 0.5.",
+  "colors": {
+    "about": "Which colours something has or shows.",
+    "multiple": true,
+    "labels": {"red": "red", "orange": "orange", "yellow": "yellow", "green": "green", "blue": "blue", "purple": "purple", "pink": "pink", "brown": "brown", "black": "black", "white": "white", "gray": "gray"}
+  },
+  "objects": {
+    "about": "Which objects, things or animals are present.",
+    "multiple": true,
+    "labels": {"person": "person", "car": "car", "bicycle": "bicycle", "bus": "bus", "truck": "truck", "dog": "dog", "cat": "cat", "bird": "bird", "chair": "chair", "table": "dining table", "bed": "bed", "tv": "tv or monitor", "laptop": "laptop", "phone": "cell phone", "book": "book", "bottle": "bottle", "cup": "cup", "food": "food", "plant": "potted plant", "bag": "bag or backpack"}
+  },
+  "sentiment": {
+    "about": "The sentiment or attitude expressed: positive, negative, neutral.",
+    "multiple": false,
+    "labels": {"positive": "positive", "negative": "negative", "neutral": "neutral", "mixed": "mixed - both positive and negative"}
+  },
+  "emotion": {
+    "about": "Which emotion a person or a text expresses.",
+    "multiple": true,
+    "labels": {"joy": "joy", "sadness": "sadness", "anger": "anger", "fear": "fear", "surprise": "surprise", "disgust": "disgust", "love": "love or affection", "gratitude": "gratitude", "confusion": "confusion", "neutral": "no particular emotion"}
+  },
+  "scene": {
+    "about": "What kind of place or setting it is: indoor, street, nature, ...",
+    "multiple": false,
+    "labels": {"home": "inside a home", "office": "office or workplace", "shop": "shop or restaurant", "street": "street or city", "road": "road or highway", "nature": "nature - forest, mountain, field", "water": "beach, sea, lake or river", "sports": "sports venue", "transport": "inside a vehicle, station or airport", "other": "somewhere else"}
+  },
+  "weather": {
+    "about": "What the weather is like.",
+    "multiple": false,
+    "labels": {"sunny": "sunny or clear", "cloudy": "cloudy or overcast", "rain": "rain", "snow": "snow", "fog": "fog or mist", "night": "night - weather not visible", "indoors": "indoors - weather not visible"}
+  },
+  "topic": {
+    "about": "What subject area a text is about: sports, business, science, ...",
+    "multiple": false,
+    "labels": {"politics": "politics and government", "business": "business and finance", "technology": "technology", "science": "science", "health": "health and medicine", "sports": "sports", "entertainment": "entertainment and culture", "travel": "travel", "food": "food and cooking", "personal": "personal life", "other": "something else"}
+  },
+  "language": {
+    "about": "Which language a text is written in.",
+    "multiple": false,
+    "labels": {"en": "English", "zh": "Chinese", "es": "Spanish", "fr": "French", "de": "German", "ja": "Japanese", "ko": "Korean", "ru": "Russian", "pt": "Portuguese", "ar": "Arabic", "other": "another language"}
+  }
+}
